@@ -74,6 +74,13 @@ options:
     required: false
     choices: ['yes', 'no']
     default: no
+  wait_for_retries:
+    description:
+      - used in conjunction with 'wait_for_deployed'. This value is multiplied
+        by the polling value of 30 seconds. The default wait_for_retries is 30
+        which gives a total of 15 mins of wait time.
+    required: false
+    default: 30
 author: Karen Cheng(@Etherdaemon)
 extends_documentation_fragment: aws
 '''
@@ -415,7 +422,7 @@ def disable_distribution(client, module):
         return status_achieved, updated_result
 
 
-def wait_for_deployed_status(client, module, max_retries=30, **args):
+def wait_for_deployed_status(client, module, **args):
     polling_increment_secs = 30
     status_achieved = False
     invocations = {
@@ -438,7 +445,7 @@ def wait_for_deployed_status(client, module, max_retries=30, **args):
     }
     resource_type = invocations[module.params.get('type')]
 
-    for x in range(0, max_retries):
+    for x in range(0, module.params.get('wait_for_retries')):
         result = resource_type['method'](**args)[resource_type['result_key']]
         current_status = result['Status']
         if current_status in ('Deployed', 'Completed'):
@@ -519,6 +526,7 @@ def main():
         resource_id=dict(),
         state=dict(default='present', choices=['present', 'absent']),
         wait_for_deployed=dict(type='bool', default=False),
+        wait_for_retries=dict(type='int', default=30),
         )
     )
     module = AnsibleModule(
